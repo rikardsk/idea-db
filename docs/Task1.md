@@ -1,0 +1,21 @@
+# Idea Database Task List
+
+- `[ ]` Setup Project Structure
+  - `[ ]` Initialize Vite React + TS app in `client/`
+  - `[ ]` Setup Express server in `server/`
+  - `[ ]` Setup shared types in `shared/`
+- `[ ]` Backend Implementation
+  - `[ ]` Create basic Express server with JSON storage
+  - `[ ]` Implement CRUD endpoints for Ideas
+- `[ ]` Frontend Implementation
+  - `[ ]` CSS Design System (Dark Mode, Variable setup)
+  - `[ ]` Component: Dashboard / Stats Cards
+  - `[ ]` Component: Idea List & Filters
+  - `[ ]` Component: Idea Form (Create/Edit)
+  - `[ ]` API Integration (Fetch from backend)
+- `[ ]` Polishing & Aesthetics
+  - `[ ]` Glassmorphism effects
+  - `[ ]` Transitions and animations
+- `[ ]` Verification & Testing
+  - `[ ]` Manual testing of CRUD flows
+  - `[ ]` Final UI check
