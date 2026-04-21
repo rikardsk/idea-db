@@ -1,7 +1,5 @@
 
 ## TODOs
-- Table view?
-- Pagination
 - Database?
 - Change icon for category so it's not the same as the status icon
 - (Add dropdown (Ascending, Descending) to the sorting section)
@@ -33,3 +31,6 @@
 ~~Blue border for selected idea, so i can see which one is selected~~
 ~~Export/Import~~
 ~~Print Pdf~~
+~~Table view?~~
+~~Pagination~~
+
