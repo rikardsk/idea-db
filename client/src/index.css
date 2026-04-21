@@ -56,6 +56,7 @@ body {
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -210,8 +211,9 @@ body {
 
 .action-row {
   display: flex;
+  overflow-x: auto;
   gap: 16px;
-  padding: 4px 0;
+  padding: 4px 0 8px 0;
 }
 
 .btn-text {
@@ -320,10 +322,31 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding-right: 4px;
+  padding: 4px 12px 12px 4px;
 }
 
-.idea-item {\n  padding: 20px;\n  background: var(--card-bg);\n  border: 1px solid var(--border-color);\n  border-radius: 16px;\n  cursor: pointer;\n  transition: var(--transition);\n  display: flex;\n  flex-direction: column;\n  gap: 12px;\n}\n\n.idea-item:hover {\n  border-color: rgba(99, 102, 241, 0.35);\n  transform: translateY(-2px);\n  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);\n}\n\n.idea-item.active {\n  border-color: var(--accent-color);\n  box-shadow: 0 0 0 1px var(--accent-color), 0 4px 20px var(--accent-glow);\n}
+.idea-item {
+  padding: 20px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.idea-item:hover {
+  border-color: rgba(99, 102, 241, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.idea-item.active {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6, 0 4px 20px rgba(59, 130, 246, 0.4);
+}
 
 .idea-item-header {
   display: flex;
@@ -499,3 +522,71 @@ textarea {
 .badge-low { background: rgba(148, 163, 184, 0.2); color: #94a3b8; }
 .badge-medium { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
 .badge-high { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+/* Print Styles */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  
+  .app-container {
+    height: auto !important;
+    padding: 20px !important;
+    display: block !important;
+  }
+
+  .dashboard-header {
+    display: none !important;
+  }
+
+  .main-content {
+    display: block !important;
+    height: auto !important;
+  }
+
+  .editor-panel, .sidebar, .idea-list {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin-bottom: 24px;
+  }
+
+  .splitter, .btn, .btn-icon, .btn-text, .search-row, .action-row, .unsaved-banner, .collapsible-panel {
+    display: none !important;
+  }
+
+  * {
+    color: black !important;
+    box-shadow: none !important;
+  }
+
+  .glass, .idea-item {
+    background: transparent !important;
+    border: 1px solid #ccc !important;
+    page-break-inside: avoid;
+    margin-bottom: 12px;
+  }
+
+  input, textarea, select {
+    border: 1px solid #ccc !important;
+    background: transparent !important;
+  }
+
+  .badge, .category-badge, .difficulty-indicator {
+    border: 1px solid #ccc !important;
+  }
+
+  .app-container.print-idea .sidebar {
+    display: none !important;
+  }
+
+  .app-container.print-list .editor-panel {
+    display: none !important;
+  }
+}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   Plus, Search, Lightbulb, TrendingUp, Clock, Archive, Filter, 
-  SortAsc, Globe, Smartphone, Monitor, 
+  SortAsc, Globe, Smartphone, Monitor, Download, Upload, Printer,
   Gamepad2, Box, Gauge, Trash2
 } from 'lucide-react';
 import { Idea, IdeaStats, IdeaStatus, IdeaPriority, IdeaCategory, IdeaDifficulty } from '../../shared/types';
@@ -39,6 +39,7 @@ const App = () => {
   
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [printMode, setPrintMode] = useState<'idea' | 'list' | null>(null);
 
   // Form State
   const [formData, setFormData] = useState<Partial<Idea>>({
@@ -84,6 +85,69 @@ const App = () => {
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
   }, []);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExport = () => {
+    const dataStr = JSON.stringify(ideas, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ideas-backup.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        const res = await fetch('/api/ideas/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(json)
+        });
+        if (res.ok) {
+          fetchIdeas();
+          fetchStats();
+          alert('Ideas imported successfully!');
+        } else {
+          alert('Failed to import ideas.');
+        }
+      } catch (err) {
+        alert('Invalid JSON file.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handlePrintIdea = () => {
+    setPrintMode('idea');
+    setTimeout(() => { 
+      window.print(); 
+      setPrintMode(null); 
+    }, 50);
+  };
+
+  const handlePrintList = () => {
+    setPrintMode('list');
+    setTimeout(() => { 
+      window.print(); 
+      setPrintMode(null); 
+    }, 50);
+  };
 
   const fetchIdeas = async () => {
     const res = await fetch('/api/ideas');
@@ -218,7 +282,7 @@ const App = () => {
   }, [formData, isEditing]);
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${printMode ? `print-${printMode}` : ''}`}>
       {/* Dashboard Stats */}
       <div className="dashboard-header fade-in">
         <div className="stat-card glass">
@@ -252,9 +316,14 @@ const App = () => {
                 <h2 style={{ fontSize: '1.5rem' }}>{selectedIdea ? 'Edit Idea' : 'New Idea'}</h2>
                 <div style={{ display: 'flex', gap: '12px' }}>
                   {selectedIdea && (
-                    <button type="button" className="btn btn-danger" onClick={handleDelete} title="Delete Idea">
-                      <Trash2 size={16} />
-                    </button>
+                    <>
+                      <button type="button" className="btn" onClick={handlePrintIdea} title="Print Idea">
+                        <Printer size={16} />
+                      </button>
+                      <button type="button" className="btn btn-danger" onClick={handleDelete} title="Delete Idea">
+                        <Trash2 size={16} />
+                      </button>
+                    </>
                   )}
                   <button type="button" className="btn" onClick={handleCancel}>Cancel</button>
                   <button type="submit" className="btn btn-primary">Save Idea</button>
@@ -379,12 +448,10 @@ const App = () => {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <button className="btn btn-primary btn-icon" onClick={handleCreateNew} title="Add New Idea">
-              <Plus size={20} />
-            </button>
           </div>
 
           <div className="action-row">
+            <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".json" style={{ display: 'none' }} />
             <button 
               className={`btn-text ${isFiltersOpen ? 'active' : ''}`} 
               onClick={() => { setIsFiltersOpen(!isFiltersOpen); setIsSortOpen(false); }}
@@ -397,14 +464,25 @@ const App = () => {
             >
               <SortAsc size={16} /> Sort
             </button>
-            <button
-              className="btn-text btn-text-danger"
-              onClick={handleDeleteAll}
-              title="Delete all ideas"
-              style={{ marginLeft: 'auto' }}
-            >
-              <Trash2 size={16} /> Delete All
-            </button>
+            
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+              <button className="btn-text" onClick={handleExport} title="Export Ideas">
+                <Download size={16} />
+              </button>
+              <button className="btn-text" onClick={handleImportClick} title="Import Ideas">
+                <Upload size={16} />
+              </button>
+              <button className="btn-text" onClick={handlePrintList} title="Print List">
+                <Printer size={16} />
+              </button>
+              <button
+                className="btn-text btn-text-danger"
+                onClick={handleDeleteAll}
+                title="Delete all ideas"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
           </div>
 
           {isFiltersOpen && (
@@ -500,8 +578,8 @@ const App = () => {
                   onClick={() => handleSelectIdea(idea)}
                 >
                   <div className="idea-item-header">
-                    <span className={`badge badge-${idea.priority.toLowerCase()}`}>{idea.priority}</span>
-                    <div className="idea-item-meta">
+                    <span className={`badge badge-${idea.priority.toLowerCase()}`} title="Priority">{idea.priority}</span>
+                    <div className="idea-item-meta" title="Status">
                       <CategoryIcon size={14} />
                       <span>{idea.status}</span>
                     </div>
@@ -511,10 +589,10 @@ const App = () => {
                     {idea.description}
                   </p>
                   <div className="idea-item-footer">
-                    <span className={`difficulty-indicator diff-${difficulty.toLowerCase().replace(' ', '-')}`}>
+                    <span className={`difficulty-indicator diff-${difficulty.toLowerCase().replace(' ', '-')}`} title="Difficulty">
                       <Gauge size={12} /> {difficulty}
                     </span>
-                    <span className="category-badge">
+                    <span className="category-badge" title="Category">
                       <CategoryIcon size={12} /> {categoryObj.label}
                     </span>
                   </div>

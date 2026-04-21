@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "description": "Backend for Idea Database",
   "main": "src/index.ts",
+  "type": "module",
   "scripts": {
-    "dev": "ts-node src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js"
   },
@@ -19,6 +20,7 @@
     "@types/node": "^20.11.16",
     "@types/uuid": "^9.0.8",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.3.3"
   }
 }

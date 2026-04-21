@@ -2,7 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Define types locally
 export type IdeaStatus = 'Draft' | 'Researching' | 'In Progress' | 'Implemented' | 'Archived';
@@ -30,7 +34,7 @@ export interface IdeaStats {
 }
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 const DATA_PATH = path.join(__dirname, '../data/ideas.json');
 
 app.use(cors());
@@ -75,6 +79,35 @@ app.post('/api/ideas', async (req, res) => {
     res.status(201).json(newIdea);
   } catch (error) {
     res.status(500).json({ error: 'Failed to save idea' });
+  }
+});
+
+app.post('/api/ideas/import', async (req, res) => {
+  try {
+    await ensureDataFile();
+    const data = await fs.readFile(DATA_PATH, 'utf-8');
+    const existingIdeas: Idea[] = JSON.parse(data);
+    const importedIdeas: Idea[] = req.body;
+    
+    if (!Array.isArray(importedIdeas)) {
+      return res.status(400).json({ error: 'Invalid format, expected an array' });
+    }
+
+    const merged = [...existingIdeas];
+    for (const incoming of importedIdeas) {
+      if (!incoming.id) incoming.id = uuidv4();
+      const existingIndex = merged.findIndex(i => i.id === incoming.id);
+      if (existingIndex !== -1) {
+        merged[existingIndex] = { ...merged[existingIndex], ...incoming, updatedAt: new Date().toISOString() };
+      } else {
+        merged.push({ ...incoming, createdAt: incoming.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() });
+      }
+    }
+
+    await fs.writeFile(DATA_PATH, JSON.stringify(merged, null, 2));
+    res.json({ success: true, imported: importedIdeas.length });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to import ideas' });
   }
 });
 

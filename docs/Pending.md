@@ -1,11 +1,9 @@
 
 ## TODOs
+- Table view?
+- Database?
 - Change icon for category so it's not the same as the status icon
-- Tooltips for all 4 icons with the title (Priority, Status, Difficulty, Category)
-- Blue border for selected idea, so i can see which one is selected
 - (Add dropdown (Ascending, Descending) to the sorting section)
-- Export/Import
-- Print Pdf?
 - Icons?
 - Donut chart in dashboard (other charts?)
 - Subcategories
@@ -30,4 +28,7 @@
 ~~Add a "Reset Filters" button~~
 ~~Show category in the idea card (bottom right corner)~~
 ~~Warn if you have changed an idea but not saved it~~
-
+~~Tooltips for all 4 icons with the title (Priority, Status, Difficulty, Category)~~
+~~Blue border for selected idea, so i can see which one is selected~~
+~~Export/Import~~
+~~Print Pdf~~
