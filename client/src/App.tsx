@@ -2,8 +2,10 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   Plus, Search, Lightbulb, TrendingUp, Clock, Archive, Filter, 
   SortAsc, Globe, Smartphone, Monitor, Download, Upload, Printer,
-  Gamepad2, Box, Gauge, Trash2, LayoutGrid, List, ChevronLeft, ChevronRight
+  Gamepad2, Box, Gauge, Trash2, LayoutGrid, List, ChevronLeft, ChevronRight,
+  BarChart2, PieChart as PieChartIcon
 } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { Idea, IdeaStats, IdeaStatus, IdeaPriority, IdeaCategory, IdeaDifficulty } from '../../shared/types';
 
 const CATEGORIES: { value: IdeaCategory; icon: any; label: string }[] = [
@@ -40,9 +42,86 @@ const App = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 20;
   
+  const [showStats, setShowStats] = useState(true);
+  const [showCharts, setShowCharts] = useState(true);
+  
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [printMode, setPrintMode] = useState<'idea' | 'list' | null>(null);
+
+  const getCategoryData = () => {
+    const counts: Record<string, number> = {};
+    ideas.forEach(i => { const cat = i.category || 'Other'; counts[cat] = (counts[cat] || 0) + 1; });
+    return Object.keys(counts).map(k => ({ name: k, value: counts[k] }));
+  };
+  const getDifficultyData = () => {
+    const counts: Record<string, number> = {};
+    ideas.forEach(i => { const d = i.difficulty || 'Medium'; counts[d] = (counts[d] || 0) + 1; });
+    return Object.keys(counts).map(k => ({ name: k, value: counts[k] }));
+  };
+  const getStatusData = () => {
+    const counts: Record<string, number> = {};
+    ideas.forEach(i => { counts[i.status] = (counts[i.status] || 0) + 1; });
+    return Object.keys(counts).map(k => ({ name: k, value: counts[k] }));
+  };
+  const getPriorityData = () => {
+    const counts: Record<string, number> = {};
+    ideas.forEach(i => { counts[i.priority] = (counts[i.priority] || 0) + 1; });
+    return Object.keys(counts).map(k => ({ name: k, value: counts[k] }));
+  };
+
+  const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#3b82f6'];
+
+  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+    if (percent === 0) return null;
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    return (
+      <text 
+        x={x} 
+        y={y} 
+        fill="white" 
+        textAnchor="middle" 
+        dominantBaseline="central"
+        fontSize={12}
+        fontWeight="bold"
+        style={{ pointerEvents: 'none' }}
+      >
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
+
+  const renderDonut = (data: any[]) => (
+    <ResponsiveContainer width="100%" height={200}>
+      <PieChart>
+        <Pie
+          data={data}
+          cx="50%"
+          cy="50%"
+          innerRadius={45}
+          outerRadius={75}
+          paddingAngle={3}
+          dataKey="value"
+          stroke="none"
+          labelLine={false}
+          label={renderCustomizedLabel}
+        >
+          {data.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+          ))}
+        </Pie>
+        <RechartsTooltip 
+          contentStyle={{ backgroundColor: 'var(--panel-bg)', borderRadius: '8px', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+          itemStyle={{ color: 'var(--text-primary)' }}
+        />
+        <Legend wrapperStyle={{ fontSize: '12px', color: 'var(--text-secondary)' }} />
+      </PieChart>
+    </ResponsiveContainer>
+  );
 
   // Form State
   const [formData, setFormData] = useState<Partial<Idea>>({
@@ -293,23 +372,60 @@ const App = () => {
 
   return (
     <div className={`app-container ${printMode ? `print-${printMode}` : ''}`}>
-      {/* Dashboard Stats */}
-      <div className="dashboard-header fade-in">
-        <div className="stat-card glass">
-          <div className="stat-title"><Lightbulb size={16} /> Total Ideas</div>
-          <div className="stat-value">{stats?.total || 0}</div>
+      <div className="dashboard-top-section fade-in">
+        <div className="dashboard-rows-container">
+          {showStats && (
+            <div className="dashboard-header">
+              <div className="stat-card glass">
+                <div className="stat-title"><Lightbulb size={16} /> Total Ideas</div>
+                <div className="stat-value">{stats?.total || 0}</div>
+              </div>
+              <div className="stat-card glass">
+                <div className="stat-title"><TrendingUp size={16} /> In Progress</div>
+                <div className="stat-value">{stats?.byStatus['In Progress'] || 0}</div>
+              </div>
+              <div className="stat-card glass">
+                <div className="stat-title"><Clock size={16} /> Researching</div>
+                <div className="stat-value">{stats?.byStatus['Researching'] || 0}</div>
+              </div>
+              <div className="stat-card glass">
+                <div className="stat-title"><Archive size={16} /> Archived</div>
+                <div className="stat-value">{stats?.byStatus['Archived'] || 0}</div>
+              </div>
+            </div>
+          )}
+
+          {showCharts && (
+            <div className="dashboard-charts">
+              <div className="chart-card glass">
+                <h4 className="chart-title">Category</h4>
+                {renderDonut(getCategoryData())}
+              </div>
+              <div className="chart-card glass">
+                <h4 className="chart-title">Difficulty</h4>
+                {renderDonut(getDifficultyData())}
+              </div>
+              <div className="chart-card glass">
+                <h4 className="chart-title">Status</h4>
+                {renderDonut(getStatusData())}
+              </div>
+              <div className="chart-card glass">
+                <h4 className="chart-title">Priority</h4>
+                {renderDonut(getPriorityData())}
+              </div>
+            </div>
+          )}
         </div>
-        <div className="stat-card glass">
-          <div className="stat-title"><TrendingUp size={16} /> In Progress</div>
-          <div className="stat-value">{stats?.byStatus['In Progress'] || 0}</div>
-        </div>
-        <div className="stat-card glass">
-          <div className="stat-title"><Clock size={16} /> Researching</div>
-          <div className="stat-value">{stats?.byStatus['Researching'] || 0}</div>
-        </div>
-        <div className="stat-card glass">
-          <div className="stat-title"><Archive size={16} /> Archived</div>
-          <div className="stat-value">{stats?.byStatus['Archived'] || 0}</div>
+
+        <div className="toggle-buttons-sidebar glass">
+          <button className={`toggle-panel-btn ${showStats ? 'active' : ''}`} onClick={() => setShowStats(!showStats)} title="Toggle Stats">
+            <BarChart2 size={24} />
+            <span>Stats</span>
+          </button>
+          <button className={`toggle-panel-btn ${showCharts ? 'active' : ''}`} onClick={() => setShowCharts(!showCharts)} title="Toggle Charts">
+            <PieChartIcon size={24} />
+            <span>Charts</span>
+          </button>
         </div>
       </div>
 
