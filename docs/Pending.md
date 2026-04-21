@@ -1,6 +1,7 @@
 
 ## TODOs
 - Table view?
+- Pagination
 - Database?
 - Change icon for category so it's not the same as the status icon
 - (Add dropdown (Ascending, Descending) to the sorting section)

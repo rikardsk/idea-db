@@ -201,12 +201,43 @@ body {
 }
 
 .btn-icon {
-  padding: 10px;
+  padding: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   aspect-ratio: 1;
-  border-radius: 12px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-icon:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.btn-icon.active {
+  background: var(--card-bg);
+  color: var(--accent-color);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.btn-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.view-toggles {
+  display: flex;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  padding: 4px;
+  border: 1px solid var(--border-color);
+  gap: 4px;
+  margin-right: 8px;
 }
 
 .action-row {
@@ -404,6 +435,88 @@ body {
 .diff-very-hard { color: #ef4444; }
 .diff-impossible { color: #a855f7; text-shadow: 0 0 8px rgba(168, 85, 247, 0.4); }
 
+/* Table View */
+.idea-table-container {
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--panel-bg);
+}
+
+.idea-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.idea-table th {
+  padding: 12px 16px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.idea-table td {
+  padding: 16px;
+  border-bottom: 1px solid var(--glass-border);
+  vertical-align: top;
+}
+
+.idea-table tr {
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.idea-table tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.idea-table tr.active {
+  background: rgba(99, 102, 241, 0.1);
+  box-shadow: inset 2px 0 0 var(--accent-color);
+}
+
+.idea-table tr:last-child td {
+  border-bottom: none;
+}
+
+.table-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.table-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
+/* Pagination */
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  margin-top: auto;
+  border-top: 1px solid var(--border-color);
+}
+
+.page-indicator {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
 .tag-preview {
   font-size: 0.75rem;
   color: var(--accent-color);
@@ -554,10 +667,10 @@ textarea {
     background: none !important;
     border: none !important;
     padding: 0 !important;
-    margin-bottom: 24px;
+    margin-bottom: 8px;
   }
 
-  .splitter, .btn, .btn-icon, .btn-text, .search-row, .action-row, .unsaved-banner, .collapsible-panel {
+  .splitter, .btn, .btn-icon, .btn-text, .search-row, .action-row, .unsaved-banner, .collapsible-panel, .pagination-wrapper {
     display: none !important;
   }
 
@@ -568,18 +681,36 @@ textarea {
 
   .glass, .idea-item {
     background: transparent !important;
-    border: 1px solid #ccc !important;
+    border: none !important;
     page-break-inside: avoid;
-    margin-bottom: 12px;
+    margin-bottom: 8px !important;
+    padding: 8px 0 !important;
+  }
+
+  .idea-item {
+    border-bottom: 1px solid #ccc !important;
+    border-radius: 0 !important;
   }
 
   input, textarea, select {
-    border: 1px solid #ccc !important;
+    border: none !important;
     background: transparent !important;
+    padding: 4px 0 !important;
+    margin: 0 !important;
   }
 
   .badge, .category-badge, .difficulty-indicator {
-    border: 1px solid #ccc !important;
+    border: none !important;
+    padding: 2px 4px !important;
+  }
+  
+  .idea-table th, .idea-table td {
+    padding: 4px 8px !important;
+    border-color: #ccc !important;
+  }
+  
+  .idea-table-container {
+    border: none !important;
   }
 
   .app-container.print-idea .sidebar {

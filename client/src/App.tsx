@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { 
   Plus, Search, Lightbulb, TrendingUp, Clock, Archive, Filter, 
   SortAsc, Globe, Smartphone, Monitor, Download, Upload, Printer,
-  Gamepad2, Box, Gauge, Trash2
+  Gamepad2, Box, Gauge, Trash2, LayoutGrid, List, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { Idea, IdeaStats, IdeaStatus, IdeaPriority, IdeaCategory, IdeaDifficulty } from '../../shared/types';
 
@@ -36,6 +36,9 @@ const App = () => {
   
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
   
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -185,6 +188,13 @@ const App = () => {
         return 0;
       });
   }, [ideas, search, filterStatus, filterCategory, filterDifficulty, filterPriority, sortBy]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterStatus, filterCategory, filterDifficulty, filterPriority, sortBy]);
+
+  const totalPages = Math.ceil(filteredIdeas.length / ITEMS_PER_PAGE) || 1;
+  const paginatedIdeas = filteredIdeas.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const resetFilters = () => {
     setSearch('');
@@ -452,6 +462,24 @@ const App = () => {
 
           <div className="action-row">
             <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".json" style={{ display: 'none' }} />
+            
+            <div className="view-toggles">
+              <button 
+                className={`btn-icon ${viewMode === 'card' ? 'active' : ''}`}
+                onClick={() => setViewMode('card')}
+                title="Card View"
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button 
+                className={`btn-icon ${viewMode === 'table' ? 'active' : ''}`}
+                onClick={() => setViewMode('table')}
+                title="Table View"
+              >
+                <List size={16} />
+              </button>
+            </div>
+
             <button 
               className={`btn-text ${isFiltersOpen ? 'active' : ''}`} 
               onClick={() => { setIsFiltersOpen(!isFiltersOpen); setIsSortOpen(false); }}
@@ -565,7 +593,61 @@ const App = () => {
           )}
 
           <div className="idea-list">
-            {filteredIdeas.map(idea => {
+            {viewMode === 'table' && filteredIdeas.length > 0 && (
+              <div className="idea-table-container">
+                <table className="idea-table">
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Category</th>
+                      <th>Status</th>
+                      <th>Priority</th>
+                      <th>Difficulty</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedIdeas.map(idea => {
+                      const category = idea.category || 'Other';
+                      const difficulty = idea.difficulty || 'Medium';
+                      const categoryObj = CATEGORIES.find(c => c.value === category) || CATEGORIES[4];
+                      const CategoryIcon = categoryObj.icon;
+                      
+                      return (
+                        <tr 
+                          key={idea.id}
+                          className={selectedIdea?.id === idea.id ? 'active' : ''}
+                          onClick={() => handleSelectIdea(idea)}
+                        >
+                          <td>
+                            <div className="table-title">{idea.title}</div>
+                            <div className="table-desc">{idea.description}</div>
+                          </td>
+                          <td>
+                            <span className="category-badge" title="Category">
+                              <CategoryIcon size={12} /> {categoryObj.label}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="idea-item-meta" title="Status" style={{ justifyContent: 'flex-start' }}>
+                              <CategoryIcon size={14} />
+                              <span>{idea.status}</span>
+                            </div>
+                          </td>
+                          <td><span className={`badge badge-${idea.priority.toLowerCase()}`} title="Priority">{idea.priority}</span></td>
+                          <td>
+                            <span className={`difficulty-indicator diff-${difficulty.toLowerCase().replace(' ', '-')}`} title="Difficulty">
+                              <Gauge size={12} /> {difficulty}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {viewMode === 'card' && paginatedIdeas.map(idea => {
               const category = idea.category || 'Other';
               const difficulty = idea.difficulty || 'Medium';
               const categoryObj = CATEGORIES.find(c => c.value === category) || CATEGORIES[4];
@@ -599,6 +681,33 @@ const App = () => {
                 </div>
               );
             })}
+          </div>
+
+          <div className="pagination-wrapper" style={{ marginTop: 'auto', borderTop: '1px solid var(--border-color)', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+            {totalPages > 1 && (
+              <div className="pagination-controls" style={{ marginTop: 0, borderTop: 'none', padding: 0 }}>
+                <button 
+                  className="btn-icon" 
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="page-indicator">Page {currentPage} of {totalPages}</span>
+                <button 
+                  className="btn-icon" 
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            )}
+            <div className="item-count" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+              {filteredIdeas.length === 0 
+                ? 'No ideas found' 
+                : `Showing ${(currentPage - 1) * ITEMS_PER_PAGE + 1}-${Math.min(currentPage * ITEMS_PER_PAGE, filteredIdeas.length)} of ${filteredIdeas.length} ideas`}
+            </div>
           </div>
         </div>
       </main>
