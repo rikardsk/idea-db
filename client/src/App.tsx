@@ -3,10 +3,14 @@ import {
   Plus, Search, Lightbulb, TrendingUp, Clock, Archive, Filter, 
   SortAsc, Globe, Smartphone, Monitor, Download, Upload, Printer,
   Gamepad2, Box, Gauge, Trash2, LayoutGrid, List, ChevronLeft, ChevronRight,
-  BarChart2, PieChart as PieChartIcon
+  BarChart2, PieChart as PieChartIcon, LogOut
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { Idea, IdeaStats, IdeaStatus, IdeaPriority, IdeaCategory, IdeaDifficulty } from '../../shared/types';
+import { supabase } from './supabase';
+import { Auth } from './Auth';
+import { Session } from '@supabase/supabase-js';
+import { Database } from './types/supabase'; // We'll generate this later or just use any for now
 
 const CATEGORIES: { value: IdeaCategory; icon: any; label: string }[] = [
   { value: 'Web', icon: Globe, label: 'Web' },
@@ -49,6 +53,21 @@ const App = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [printMode, setPrintMode] = useState<'idea' | 'list' | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const getCategoryData = () => {
     const counts: Record<string, number> = {};
@@ -233,21 +252,54 @@ const App = () => {
   };
 
   const fetchIdeas = async () => {
-    const res = await fetch('/api/ideas');
-    const data = await res.json();
-    setIdeas(data);
+    if (!session?.user) return;
+    const { data, error } = await supabase
+      .from('ideas')
+      .select('*');
+    
+    if (error) {
+      console.error('Error fetching ideas:', error);
+      return;
+    }
+    setIdeas(data as any);
   };
 
-  const fetchStats = async () => {
-    const res = await fetch('/api/stats');
-    const data = await res.json();
-    setStats(data);
-  };
+  const fetchStats = useCallback(() => {
+    if (!ideas.length) {
+      setStats({
+        total: 0,
+        byStatus: { Draft: 0, Researching: 0, 'In Progress': 0, Implemented: 0, Archived: 0 },
+        byPriority: { Low: 0, Medium: 0, High: 0 }
+      });
+      return;
+    }
+    
+    const statusCounts: any = { Draft: 0, Researching: 0, 'In Progress': 0, Implemented: 0, Archived: 0 };
+    const priorityCounts: any = { Low: 0, Medium: 0, High: 0 };
+    
+    ideas.forEach(idea => {
+      statusCounts[idea.status] = (statusCounts[idea.status] || 0) + 1;
+      priorityCounts[idea.priority] = (priorityCounts[idea.priority] || 0) + 1;
+    });
+
+    setStats({
+      total: ideas.length,
+      byStatus: statusCounts,
+      byPriority: priorityCounts
+    });
+  }, [ideas]);
 
   useEffect(() => {
-    fetchIdeas();
+    if (session) {
+      fetchIdeas();
+    } else {
+      setIdeas([]);
+    }
+  }, [session]);
+
+  useEffect(() => {
     fetchStats();
-  }, []);
+  }, [fetchStats]);
 
   const filteredIdeas = useMemo(() => {
     return ideas
@@ -307,21 +359,30 @@ const App = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const method = selectedIdea ? 'PUT' : 'POST';
-    const url = selectedIdea ? `/api/ideas/${selectedIdea.id}` : '/api/ideas';
+    if (!session?.user) return;
 
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    });
+    const ideaData = {
+      ...formData,
+      user_id: session.user.id,
+      updated_at: new Date().toISOString()
+    };
+    
+    if (!selectedIdea) {
+      delete (ideaData as any).id;
+    }
 
-    if (res.ok) {
+    const { error } = await supabase
+      .from('ideas')
+      .upsert(ideaData);
+
+    if (!error) {
       fetchIdeas();
-      fetchStats();
       setIsDirty(false);
       setIsEditing(false);
       setSelectedIdea(null);
+    } else {
+      console.error('Error saving idea:', error);
+      alert('Failed to save idea');
     }
   };
 
@@ -332,12 +393,17 @@ const App = () => {
   };
 
   const handleDelete = async () => {
-    if (!selectedIdea) return;
+    if (!selectedIdea || !session?.user) return;
     if (!window.confirm(`Delete "${selectedIdea.title}"? This cannot be undone.`)) return;
-    const res = await fetch(`/api/ideas/${selectedIdea.id}`, { method: 'DELETE' });
-    if (res.ok) {
+    
+    const { error } = await supabase
+      .from('ideas')
+      .delete()
+      .eq('id', selectedIdea.id)
+      .eq('user_id', session.user.id);
+
+    if (!error) {
       fetchIdeas();
-      fetchStats();
       setIsDirty(false);
       setIsEditing(false);
       setSelectedIdea(null);
@@ -345,15 +411,24 @@ const App = () => {
   };
 
   const handleDeleteAll = async () => {
+    if (!session?.user || ideas.length === 0) return;
     if (!window.confirm(`Delete ALL ${ideas.length} ideas? This cannot be undone.`)) return;
-    const res = await fetch('/api/ideas', { method: 'DELETE' });
-    if (res.ok) {
+    
+    const { error } = await supabase
+      .from('ideas')
+      .delete()
+      .eq('user_id', session.user.id);
+      
+    if (!error) {
       fetchIdeas();
-      fetchStats();
       setIsDirty(false);
       setIsEditing(false);
       setSelectedIdea(null);
     }
+  };
+
+  const handleLogOut = async () => {
+    await supabase.auth.signOut();
   };
 
   // Track dirty state whenever formData changes
@@ -370,6 +445,10 @@ const App = () => {
       (formData.tags ?? []).join(',') !== (saved.tags ?? []).join(',');
     setIsDirty(dirty);
   }, [formData, isEditing]);
+
+  if (!session) {
+    return <Auth />;
+  }
 
   return (
     <div className={`app-container ${printMode ? `print-${printMode}` : ''}`}>
@@ -633,6 +712,13 @@ const App = () => {
                 title="Delete all ideas"
               >
                 <Trash2 size={16} />
+              </button>
+              <button
+                className="btn-text"
+                onClick={handleLogOut}
+                title="Sign Out"
+              >
+                <LogOut size={16} />
               </button>
             </div>
           </div>
