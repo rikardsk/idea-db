@@ -47,6 +47,7 @@ const App = () => {
   
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isFabOpen, setIsFabOpen] = useState(false);
   const [printMode, setPrintMode] = useState<'idea' | 'list' | null>(null);
 
   const getCategoryData = () => {
@@ -416,17 +417,6 @@ const App = () => {
             </div>
           )}
         </div>
-
-        <div className="toggle-buttons-sidebar glass">
-          <button className={`toggle-panel-btn ${showStats ? 'active' : ''}`} onClick={() => setShowStats(!showStats)} title="Toggle Stats">
-            <BarChart2 size={24} />
-            <span>Stats</span>
-          </button>
-          <button className={`toggle-panel-btn ${showCharts ? 'active' : ''}`} onClick={() => setShowCharts(!showCharts)} title="Toggle Charts">
-            <PieChartIcon size={24} />
-            <span>Charts</span>
-          </button>
-        </div>
       </div>
 
       <main
@@ -436,121 +426,139 @@ const App = () => {
       >
         {/* Left Panel: Editor */}
         <div className="editor-panel glass fade-in" style={{ animationDelay: '0.2s' }}>
-          {isEditing ? (
-            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2 style={{ fontSize: '1.5rem' }}>{selectedIdea ? 'Edit Idea' : 'New Idea'}</h2>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  {selectedIdea && (
-                    <>
-                      <button type="button" className="btn" onClick={handlePrintIdea} title="Print Idea">
-                        <Printer size={16} />
-                      </button>
-                      <button type="button" className="btn btn-danger" onClick={handleDelete} title="Delete Idea">
-                        <Trash2 size={16} />
-                      </button>
-                    </>
-                  )}
-                  <button type="button" className="btn" onClick={handleCancel}>Cancel</button>
-                  <button type="submit" className="btn btn-primary">Save Idea</button>
+          <div className="editor-scroll-container">
+            {isEditing ? (
+              <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h2 style={{ fontSize: '1.5rem' }}>{selectedIdea ? 'Edit Idea' : 'New Idea'}</h2>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    {selectedIdea && (
+                      <>
+                        <button type="button" className="btn" onClick={handlePrintIdea} title="Print Idea">
+                          <Printer size={16} />
+                        </button>
+                        <button type="button" className="btn btn-danger" onClick={handleDelete} title="Delete Idea">
+                          <Trash2 size={16} />
+                        </button>
+                      </>
+                    )}
+                    <button type="button" className="btn" onClick={handleCancel}>Cancel</button>
+                    <button type="submit" className="btn btn-primary">Save Idea</button>
+                  </div>
                 </div>
-              </div>
 
-              {isDirty && (
-                <div className="unsaved-banner">
-                  ⚠ Unsaved changes
-                </div>
-              )}
+                {isDirty && (
+                  <div className="unsaved-banner">
+                    ⚠ Unsaved changes
+                  </div>
+                )}
 
-              <div className="form-group">
-                <label>Title</label>
-                <input 
-                  type="text" 
-                  required
-                  placeholder="What's the big idea?" 
-                  value={formData.title}
-                  onChange={e => setFormData({ ...formData, title: e.target.value })}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 <div className="form-group">
-                  <label>Category</label>
-                  <select 
-                    value={formData.category}
-                    onChange={e => setFormData({ ...formData, category: e.target.value as any })}
-                  >
-                    {CATEGORIES.map(cat => (
-                      <option key={cat.value} value={cat.value}>{cat.label}</option>
-                    ))}
-                  </select>
+                  <label>Title</label>
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="What's the big idea?" 
+                    value={formData.title}
+                    onChange={e => setFormData({ ...formData, title: e.target.value })}
+                  />
                 </div>
-                <div className="form-group">
-                  <label>Difficulty</label>
-                  <select 
-                    value={formData.difficulty}
-                    onChange={e => setFormData({ ...formData, difficulty: e.target.value as any })}
-                  >
-                    {DIFFICULTIES.map(diff => (
-                      <option key={diff} value={diff}>{diff}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                <div className="form-group">
-                  <label>Status</label>
-                  <select 
-                    value={formData.status}
-                    onChange={e => setFormData({ ...formData, status: e.target.value as any })}
-                  >
-                    <option value="Draft">Draft</option>
-                    <option value="Researching">Researching</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Implemented">Implemented</option>
-                    <option value="Archived">Archived</option>
-                  </select>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  <div className="form-group">
+                    <label>Category</label>
+                    <select 
+                      value={formData.category}
+                      onChange={e => setFormData({ ...formData, category: e.target.value as any })}
+                    >
+                      {CATEGORIES.map(cat => (
+                        <option key={cat.value} value={cat.value}>{cat.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Difficulty</label>
+                    <select 
+                      value={formData.difficulty}
+                      onChange={e => setFormData({ ...formData, difficulty: e.target.value as any })}
+                    >
+                      {DIFFICULTIES.map(diff => (
+                        <option key={diff} value={diff}>{diff}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label>Priority</label>
-                  <select 
-                    value={formData.priority}
-                    onChange={e => setFormData({ ...formData, priority: e.target.value as any })}
-                  >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                  </select>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  <div className="form-group">
+                    <label>Status</label>
+                    <select 
+                      value={formData.status}
+                      onChange={e => setFormData({ ...formData, status: e.target.value as any })}
+                    >
+                      <option value="Draft">Draft</option>
+                      <option value="Researching">Researching</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Implemented">Implemented</option>
+                      <option value="Archived">Archived</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Priority</label>
+                    <select 
+                      value={formData.priority}
+                      onChange={e => setFormData({ ...formData, priority: e.target.value as any })}
+                    >
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                    </select>
+                  </div>
                 </div>
-              </div>
 
-              <div className="form-group">
-                <label>Description</label>
-                <textarea 
-                  placeholder="Describe your idea in detail..." 
-                  value={formData.description}
-                  onChange={e => setFormData({ ...formData, description: e.target.value })}
-                />
-              </div>
+                <div className="form-group">
+                  <label>Description</label>
+                  <textarea 
+                    placeholder="Describe your idea in detail..." 
+                    value={formData.description}
+                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  />
+                </div>
 
-              <div className="form-group">
-                <label>Tags (comma separated)</label>
-                <input 
-                  type="text" 
-                  placeholder="tech, health, ai" 
-                  value={formData.tags?.join(', ')}
-                  onChange={e => setFormData({ ...formData, tags: e.target.value.split(',').map(t => t.trim()) })}
-                />
+                <div className="form-group">
+                  <label>Tags (comma separated)</label>
+                  <input 
+                    type="text" 
+                    placeholder="tech, health, ai" 
+                    value={formData.tags?.join(', ')}
+                    onChange={e => setFormData({ ...formData, tags: e.target.value.split(',').map(t => t.trim()) })}
+                  />
+                </div>
+              </form>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)', gap: '16px' }}>
+                <Lightbulb size={64} style={{ opacity: 0.1 }} />
+                <p>Select an idea to view details or create a new one</p>
+                <button className="btn btn-primary" onClick={handleCreateNew}>Create New Idea</button>
               </div>
-            </form>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)', gap: '16px' }}>
-              <Lightbulb size={64} style={{ opacity: 0.1 }} />
-              <p>Select an idea to view details or create a new one</p>
-              <button className="btn btn-primary" onClick={handleCreateNew}>Create New Idea</button>
+            )}
+          </div>
+
+          <div className={`fab-container glass ${isFabOpen ? 'open' : ''}`}>
+            <button className="fab-trigger" onClick={() => setIsFabOpen(!isFabOpen)} title="Toggle Controls">
+              <LayoutGrid size={24} className={isFabOpen ? 'rotated' : ''} />
+            </button>
+            <div className="fab-menu">
+              <button className={`toggle-panel-btn ${showStats ? 'active' : ''}`} onClick={() => setShowStats(!showStats)} title="Toggle Stats">
+                <BarChart2 size={24} />
+                <span>Stats</span>
+              </button>
+              <button className={`toggle-panel-btn ${showCharts ? 'active' : ''}`} onClick={() => setShowCharts(!showCharts)} title="Toggle Charts">
+                <PieChartIcon size={24} />
+                <span>Charts</span>
+              </button>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Draggable Splitter */}

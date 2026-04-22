@@ -33,4 +33,5 @@
 ~~Print Pdf~~
 ~~Table view?~~
 ~~Pagination~~
-
+~~Move floating buttons to the bottom left corner~~
+~~Make the horizontal and vertical panel gaps equal in the dashboard~~
