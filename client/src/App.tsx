@@ -636,6 +636,10 @@ const App = () => {
                 <PieChartIcon size={24} />
                 <span>Charts</span>
               </button>
+              <button className="toggle-panel-btn" onClick={handleLogOut} title="Sign Out">
+                <LogOut size={24} />
+                <span>Logout</span>
+              </button>
             </div>
           </div>
         </div>
@@ -712,13 +716,6 @@ const App = () => {
                 title="Delete all ideas"
               >
                 <Trash2 size={16} />
-              </button>
-              <button
-                className="btn-text"
-                onClick={handleLogOut}
-                title="Sign Out"
-              >
-                <LogOut size={16} />
               </button>
             </div>
           </div>
