@@ -1,6 +1,20 @@
 export type IdeaStatus = 'Draft' | 'Researching' | 'In Progress' | 'Implemented' | 'Archived';
 export type IdeaPriority = 'Low' | 'Medium' | 'High';
-export type IdeaCategory = 'Web' | 'Mobile' | 'Desktop' | 'Game' | 'Other';
+export type IdeaCategory = 
+  | 'AI' 
+  | 'Desktop' 
+  | 'Digital Product' 
+  | 'Economy' 
+  | 'Fun' 
+  | 'Game' 
+  | 'Hobbies' 
+  | 'Mobile' 
+  | 'Other' 
+  | 'Physical Product' 
+  | 'SaaS' 
+  | 'Services' 
+  | 'Useful' 
+  | 'Web';
 export type IdeaDifficulty = 'Easy' | 'Medium' | 'Hard' | 'Very Hard' | 'Impossible';
 
 export interface Idea {

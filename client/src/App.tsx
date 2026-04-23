@@ -3,7 +3,8 @@ import {
   Plus, Search, Lightbulb, TrendingUp, Clock, Archive, Filter, 
   SortAsc, Globe, Smartphone, Monitor, Download, Upload, Printer,
   Gamepad2, Box, Gauge, Trash2, LayoutGrid, List, ChevronLeft, ChevronRight,
-  BarChart2, PieChart as PieChartIcon, LogOut
+  BarChart2, PieChart as PieChartIcon, LogOut, Bot, Cpu, Wallet, Smile, Palette,
+  ShoppingBag, Cloud, Briefcase, Zap, Heart
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { Idea, IdeaStats, IdeaStatus, IdeaPriority, IdeaCategory, IdeaDifficulty } from '../../shared/types';
@@ -12,13 +13,24 @@ import { Auth } from './Auth';
 import { Session } from '@supabase/supabase-js';
 import { Database } from './types/supabase'; // We'll generate this later or just use any for now
 
-const CATEGORIES: { value: IdeaCategory; icon: any; label: string }[] = [
-  { value: 'Web', icon: Globe, label: 'Web' },
-  { value: 'Mobile', icon: Smartphone, label: 'Mobile' },
+const CATEGORY_LIST: { value: IdeaCategory; icon: any; label: string }[] = [
+  { value: 'AI', icon: Bot, label: 'AI' },
   { value: 'Desktop', icon: Monitor, label: 'Desktop' },
+  { value: 'Digital Product', icon: Cpu, label: 'Digital Product' },
+  { value: 'Economy', icon: Wallet, label: 'Economy' },
+  { value: 'Fun', icon: Smile, label: 'Fun' },
   { value: 'Game', icon: Gamepad2, label: 'Game' },
+  { value: 'Hobbies', icon: Palette, label: 'Hobbies' },
+  { value: 'Mobile', icon: Smartphone, label: 'Mobile' },
+  { value: 'Physical Product', icon: ShoppingBag, label: 'Physical Product' },
+  { value: 'SaaS', icon: Cloud, label: 'SaaS' },
+  { value: 'Services', icon: Briefcase, label: 'Services' },
+  { value: 'Useful', icon: Zap, label: 'Useful' },
+  { value: 'Web', icon: Globe, label: 'Web' },
   { value: 'Other', icon: Box, label: 'Other' }
 ];
+
+const CATEGORIES = [...CATEGORY_LIST].sort((a, b) => a.label.localeCompare(b.label));
 
 const DIFFICULTIES: IdeaDifficulty[] = ['Easy', 'Medium', 'Hard', 'Very Hard', 'Impossible'];
 
