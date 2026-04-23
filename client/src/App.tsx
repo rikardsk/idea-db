@@ -50,7 +50,7 @@ const App = () => {
   const [filterCategory, setFilterCategory] = useState<IdeaCategory | 'All'>('All');
   const [filterDifficulty, setFilterDifficulty] = useState<IdeaDifficulty | 'All'>('All');
   const [filterPriority, setFilterPriority] = useState<IdeaPriority | 'All'>('All');
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'priority' | 'difficulty'>('newest');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'priority' | 'difficulty' | 'alpha-asc' | 'alpha-desc' | 'category' | 'status'>('newest');
   
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
@@ -350,9 +350,24 @@ const App = () => {
         if (sortBy === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         if (sortBy === 'priority') return PRIORITY_ORDER[b.priority] - PRIORITY_ORDER[a.priority];
         if (sortBy === 'difficulty') return DIFFICULTY_ORDER[b.difficulty] - DIFFICULTY_ORDER[a.difficulty];
+        if (sortBy === 'alpha-asc') return a.title.localeCompare(b.title);
+        if (sortBy === 'alpha-desc') return b.title.localeCompare(a.title);
+        if (sortBy === 'category') return (a.category || 'Other').localeCompare(b.category || 'Other');
+        if (sortBy === 'status') return a.status.localeCompare(b.status);
         return 0;
       });
   }, [ideas, search, filterStatus, filterCategory, filterDifficulty, filterPriority, sortBy]);
+
+  const handleHeaderSort = (type: any) => {
+    if (sortBy === type) {
+      // Toggle to desc or back to newest
+      if (type === 'alpha-asc') setSortBy('alpha-desc');
+      else if (type === 'category') setSortBy('alpha-asc'); // simplified toggle
+      else setSortBy('newest');
+    } else {
+      setSortBy(type);
+    }
+  };
 
   useEffect(() => {
     setCurrentPage(1);
@@ -835,6 +850,18 @@ const App = () => {
                 >
                   Difficulty
                 </button>
+                <button 
+                  className={`sort-opt ${sortBy === 'alpha-asc' ? 'active' : ''}`} 
+                  onClick={() => setSortBy('alpha-asc')}
+                >
+                  A-Z
+                </button>
+                <button 
+                  className={`sort-opt ${sortBy === 'alpha-desc' ? 'active' : ''}`} 
+                  onClick={() => setSortBy('alpha-desc')}
+                >
+                  Z-A
+                </button>
               </div>
             </div>
           )}
@@ -845,11 +872,21 @@ const App = () => {
                 <table className="idea-table">
                   <thead>
                     <tr>
-                      <th>Title</th>
-                      <th>Category</th>
-                      <th>Status</th>
-                      <th>Priority</th>
-                      <th>Difficulty</th>
+                      <th onClick={() => handleHeaderSort(sortBy === 'alpha-asc' ? 'alpha-desc' : 'alpha-asc')} className="sortable">
+                        Title {sortBy.includes('alpha') && (sortBy === 'alpha-asc' ? '↑' : '↓')}
+                      </th>
+                      <th onClick={() => handleHeaderSort('category')} className="sortable">
+                        Category {sortBy === 'category' && '↑'}
+                      </th>
+                      <th onClick={() => handleHeaderSort('status')} className="sortable">
+                        Status {sortBy === 'status' && '↑'}
+                      </th>
+                      <th onClick={() => handleHeaderSort('priority')} className="sortable">
+                        Priority {sortBy === 'priority' && '↑'}
+                      </th>
+                      <th onClick={() => handleHeaderSort('difficulty')} className="sortable">
+                        Difficulty {sortBy === 'difficulty' && '↑'}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>

@@ -591,6 +591,17 @@ body {
   font-weight: 600;
   border-bottom: 1px solid var(--border-color);
   background: rgba(0, 0, 0, 0.1);
+  transition: var(--transition);
+}
+
+.idea-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.idea-table th.sortable:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
 }
 
 .idea-table td {
