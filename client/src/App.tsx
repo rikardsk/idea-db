@@ -214,17 +214,31 @@ const App = () => {
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
-        const json = JSON.parse(event.target?.result as string);
-        const res = await fetch('/api/ideas/import', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(json)
+        const imported = JSON.parse(event.target?.result as string);
+        const importedArray = Array.isArray(imported) ? imported : [imported];
+        
+        if (!session?.user) return;
+
+        const ideasToInsert = importedArray.map((i: any) => {
+          // Remove potential conflicting IDs and map timestamps
+          const { id, createdAt, updatedAt, created_at, updated_at, ...rest } = i;
+          return {
+            ...rest,
+            user_id: session.user.id,
+            created_at: created_at || createdAt || new Date().toISOString(),
+            updated_at: updated_at || updatedAt || new Date().toISOString()
+          };
         });
-        if (res.ok) {
+
+        const { error } = await supabase
+          .from('ideas')
+          .insert(ideasToInsert);
+
+        if (!error) {
           fetchIdeas();
-          fetchStats();
           alert('Ideas imported successfully!');
         } else {
+          console.error('Import error:', error);
           alert('Failed to import ideas.');
         }
       } catch (err) {
@@ -261,7 +275,14 @@ const App = () => {
       console.error('Error fetching ideas:', error);
       return;
     }
-    setIdeas(data as any);
+
+    const mapped = (data || []).map((i: any) => ({
+      ...i,
+      createdAt: i.created_at,
+      updatedAt: i.updated_at
+    }));
+
+    setIdeas(mapped as any);
   };
 
   const fetchStats = useCallback(() => {
@@ -361,14 +382,21 @@ const App = () => {
     e.preventDefault();
     if (!session?.user) return;
 
-    const ideaData = {
+    const ideaData: any = {
       ...formData,
       user_id: session.user.id,
       updated_at: new Date().toISOString()
     };
     
+    // Convert camelCase to snake_case for DB
+    if (ideaData.createdAt) ideaData.created_at = ideaData.createdAt;
+    if (ideaData.updatedAt) ideaData.updated_at = ideaData.updatedAt;
+    
+    delete ideaData.createdAt;
+    delete ideaData.updatedAt;
+    
     if (!selectedIdea) {
-      delete (ideaData as any).id;
+      delete ideaData.id;
     }
 
     const { error } = await supabase

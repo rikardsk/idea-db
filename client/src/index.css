@@ -811,7 +811,7 @@ textarea {
     margin-bottom: 8px;
   }
 
-  .splitter, .btn, .btn-icon, .btn-text, .search-row, .action-row, .unsaved-banner, .collapsible-panel, .pagination-wrapper {
+  .fab-container, .splitter, .btn, .btn-icon, .btn-text, .search-row, .action-row, .unsaved-banner, .collapsible-panel, .pagination-wrapper {
     display: none !important;
   }
 
