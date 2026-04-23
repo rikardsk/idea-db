@@ -592,6 +592,7 @@ body {
   border-bottom: 1px solid var(--border-color);
   background: rgba(0, 0, 0, 0.1);
   transition: var(--transition);
+  white-space: nowrap;
 }
 
 .idea-table th.sortable {

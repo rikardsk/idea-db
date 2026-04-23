@@ -170,7 +170,7 @@ const App = () => {
 
   // Splitter drag state
   const mainContentRef = useRef<HTMLDivElement>(null);
-  const [sidebarWidth, setSidebarWidth] = useState(350);
+  const [sidebarWidth, setSidebarWidth] = useState(450);
   const isDragging = useRef(false);
   const dragStartX = useRef(0);
   const dragStartWidth = useRef(0);
@@ -188,7 +188,7 @@ const App = () => {
     if (!isDragging.current) return;
     // sidebar is on the right, so dragging left increases its width
     const delta = dragStartX.current - e.clientX;
-    const newWidth = Math.max(240, Math.min(600, dragStartWidth.current + delta));
+    const newWidth = Math.max(300, Math.min(800, dragStartWidth.current + delta));
     setSidebarWidth(newWidth);
   }, []);
 
