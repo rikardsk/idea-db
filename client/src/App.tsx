@@ -203,7 +203,7 @@ const App = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = () => {
-    const dataStr = JSON.stringify(ideas, null, 2);
+    const dataStr = JSON.stringify(filteredIdeas, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     const a = document.createElement('a');
@@ -890,7 +890,7 @@ const App = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedIdeas.map(idea => {
+                    {(printMode === 'list' ? filteredIdeas : paginatedIdeas).map(idea => {
                       const category = idea.category || 'Other';
                       const difficulty = idea.difficulty || 'Medium';
                       const categoryObj = CATEGORIES.find(c => c.value === category) || CATEGORIES[4];
@@ -931,7 +931,7 @@ const App = () => {
               </div>
             )}
 
-            {viewMode === 'card' && paginatedIdeas.map(idea => {
+            {viewMode === 'card' && (printMode === 'list' ? filteredIdeas : paginatedIdeas).map(idea => {
               const category = idea.category || 'Other';
               const difficulty = idea.difficulty || 'Medium';
               const categoryObj = CATEGORIES.find(c => c.value === category) || CATEGORIES[4];
