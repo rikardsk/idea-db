@@ -5,6 +5,7 @@ export type IdeaCategory =
   | 'Desktop' 
   | 'Digital Product' 
   | 'Economy' 
+  | 'Education'
   | 'Fun' 
   | 'Game' 
   | 'Hobbies' 
@@ -13,6 +14,7 @@ export type IdeaCategory =
   | 'Physical Product' 
   | 'SaaS' 
   | 'Services' 
+  | 'Training'
   | 'Useful' 
   | 'Web';
 export type IdeaDifficulty = 'Easy' | 'Medium' | 'Hard' | 'Very Hard' | 'Impossible';

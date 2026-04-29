@@ -4,7 +4,7 @@ import {
   SortAsc, Globe, Smartphone, Monitor, Download, Upload, Printer,
   Gamepad2, Box, Gauge, Trash2, LayoutGrid, List, ChevronLeft, ChevronRight,
   BarChart2, PieChart as PieChartIcon, LogOut, Bot, Cpu, Wallet, Smile, Palette,
-  ShoppingBag, Cloud, Briefcase, Zap, Heart
+  ShoppingBag, Cloud, Briefcase, Zap, Heart, GraduationCap, Dumbbell, X
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { Idea, IdeaStats, IdeaStatus, IdeaPriority, IdeaCategory, IdeaDifficulty } from '../../shared/types';
@@ -18,6 +18,7 @@ const CATEGORY_LIST: { value: IdeaCategory; icon: any; label: string }[] = [
   { value: 'Desktop', icon: Monitor, label: 'Desktop' },
   { value: 'Digital Product', icon: Cpu, label: 'Digital Product' },
   { value: 'Economy', icon: Wallet, label: 'Economy' },
+  { value: 'Education', icon: GraduationCap, label: 'Education' },
   { value: 'Fun', icon: Smile, label: 'Fun' },
   { value: 'Game', icon: Gamepad2, label: 'Game' },
   { value: 'Hobbies', icon: Palette, label: 'Hobbies' },
@@ -25,6 +26,7 @@ const CATEGORY_LIST: { value: IdeaCategory; icon: any; label: string }[] = [
   { value: 'Physical Product', icon: ShoppingBag, label: 'Physical Product' },
   { value: 'SaaS', icon: Cloud, label: 'SaaS' },
   { value: 'Services', icon: Briefcase, label: 'Services' },
+  { value: 'Training', icon: Dumbbell, label: 'Training' },
   { value: 'Useful', icon: Zap, label: 'Useful' },
   { value: 'Web', icon: Globe, label: 'Web' },
   { value: 'Other', icon: Box, label: 'Other' }
@@ -719,6 +721,15 @@ const App = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
+              {search && (
+                <button 
+                  className="search-clear-btn" 
+                  onClick={() => setSearch('')}
+                  title="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
           </div>
 
