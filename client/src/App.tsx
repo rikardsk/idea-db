@@ -205,12 +205,17 @@ const App = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+
     const dataStr = JSON.stringify(filteredIdeas, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'ideas-backup.json';
+    a.download = `ideas-backup_${year}-${month}-${day}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

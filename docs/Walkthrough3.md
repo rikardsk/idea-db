@@ -11,7 +11,7 @@ Added a robust endpoint `POST /api/ideas/import` for handling data synchronizati
 
 The sidebar's action row now cleanly hosts three new utilities `Export`, `Import`, and `Print List`.
 
-1. **Export Ideas** (`Download` icon): Instantly triggers a local download of your entire database encoded safely as `ideas-backup.json`.
+1. **Export Ideas** (`Download` icon): Instantly triggers a local download of your entire database encoded safely as `ideas-backup_YYYY-MM-DD.json` (where YYYY-MM-DD is the current local date).
 2. **Import Ideas** (`Upload` icon): Opens a standard file picker that reads an `.json` file and safely pushes it to the backend. It alerts you upon merging success and immediately refreshes the UI!
 3. **Print** (`Printer` icon): There are now TWO printing contexts:
    - In the sidebar action row, printing generates a clean vertical list of every idea in the database.
