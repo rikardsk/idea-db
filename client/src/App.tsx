@@ -581,6 +581,53 @@ const App = () => {
     await supabase.auth.signOut();
   };
 
+  const syncSupabaseToLocal = async () => {
+    if (!session?.user) {
+      alert('Please log in to Supabase first.');
+      return;
+    }
+    try {
+      const { data, error } = await supabase.from('ideas').select('*');
+      if (error) throw error;
+      const mapped = (data || []).map((i: any) => ({
+        ...i,
+        createdAt: i.created_at,
+        updatedAt: i.updated_at
+      }));
+      for (const idea of mapped) {
+        await saveLocalIdea(idea as Idea);
+      }
+      if (backend === 'indexedDB') await fetchIdeas();
+      alert(`Successfully synced ${mapped.length} ideas from Supabase to IndexedDB.`);
+    } catch (err) {
+      console.error('Sync error:', err);
+      alert('Failed to sync ideas from Supabase.');
+    }
+  };
+
+  const syncLocalToSupabase = async () => {
+    if (!session?.user) {
+      alert('Please log in to Supabase first.');
+      return;
+    }
+    try {
+      const localIdeas = await getLocalIdeas();
+      const ideasToInsert = localIdeas.map(idea => ({
+        ...idea,
+        user_id: session.user.id,
+        created_at: idea.createdAt,
+        updated_at: idea.updatedAt
+      }));
+      const { error } = await supabase.from('ideas').upsert(ideasToInsert);
+      if (error) throw error;
+      if (backend === 'supabase') await fetchIdeas();
+      alert(`Successfully synced ${localIdeas.length} local ideas to Supabase.`);
+    } catch (err) {
+      console.error('Sync error:', err);
+      alert('Failed to sync ideas to Supabase.');
+    }
+  };
+
   // Track dirty state whenever formData changes
   useEffect(() => {
     if (!isEditing) return;
@@ -1155,6 +1202,25 @@ const App = () => {
                 </div>
               </button>
             </div>
+
+            {session?.user ? (
+              <div className="sync-section">
+                <h3>Cloud Sync</h3>
+                <p>Transfer data between your local browser database and Supabase cloud database.</p>
+                <div className="sync-buttons">
+                  <button type="button" className="btn btn-outline" onClick={syncSupabaseToLocal}>
+                    <Download size={16} /> Pull from Cloud
+                  </button>
+                  <button type="button" className="btn btn-outline" onClick={syncLocalToSupabase}>
+                    <Upload size={16} /> Push to Cloud
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="sync-section-login-prompt">
+                <p>💡 Log in to Supabase to enable data synchronization between cloud and local databases.</p>
+              </div>
+            )}
 
             <div className="modal-footer">
               <button className="btn btn-primary" onClick={() => setIsSettingsOpen(false)}>
