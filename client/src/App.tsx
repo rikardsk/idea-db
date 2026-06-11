@@ -4,7 +4,8 @@ import {
   SortAsc, Globe, Smartphone, Monitor, Download, Upload, Printer,
   Gamepad2, Box, Gauge, Trash2, LayoutGrid, List, ChevronLeft, ChevronRight,
   BarChart2, PieChart as PieChartIcon, LogOut, Bot, Cpu, Wallet, Smile, Palette,
-  ShoppingBag, Cloud, Briefcase, Zap, Heart, GraduationCap, Dumbbell, X
+  ShoppingBag, Cloud, Briefcase, Zap, Heart, GraduationCap, Dumbbell, X,
+  Settings, Server, Database as DbIcon
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import { Idea, IdeaStats, IdeaStatus, IdeaPriority, IdeaCategory, IdeaDifficulty } from '../../shared/types';
@@ -12,6 +13,7 @@ import { supabase } from './supabase';
 import { Auth } from './Auth';
 import { Session } from '@supabase/supabase-js';
 import { Database } from './types/supabase'; // We'll generate this later or just use any for now
+import { getLocalIdeas, saveLocalIdea, deleteLocalIdea, clearLocalIdeas } from './indexedDb';
 
 const CATEGORY_LIST: { value: IdeaCategory; icon: any; label: string }[] = [
   { value: 'AI', icon: Bot, label: 'AI' },
@@ -45,6 +47,10 @@ const PRIORITY_ORDER: Record<IdeaPriority, number> = {
 };
 
 const App = () => {
+  const [backend, setBackend] = useState<'supabase' | 'indexedDB'>(() => {
+    return (localStorage.getItem('idea-db-backend') as 'supabase' | 'indexedDB') || 'supabase';
+  });
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [stats, setStats] = useState<IdeaStats | null>(null);
   const [search, setSearch] = useState('');
@@ -226,42 +232,54 @@ const App = () => {
     fileInputRef.current?.click();
   };
 
+  const importToSupabase = async (importedArray: any[], userId: string) => {
+    const ideasToInsert = importedArray.map((i: any) => {
+      const { id, createdAt, updatedAt, created_at, updated_at, ...rest } = i;
+      return {
+        ...rest,
+        user_id: userId,
+        created_at: created_at || createdAt || new Date().toISOString(),
+        updated_at: updated_at || updatedAt || new Date().toISOString()
+      };
+    });
+    const { error } = await supabase.from('ideas').insert(ideasToInsert);
+    if (error) throw error;
+  };
+
+  const importToIndexedDB = async (importedArray: any[]) => {
+    const ideasToInsert = importedArray.map((i: any) => {
+      const { id, createdAt, updatedAt, created_at, updated_at, ...rest } = i;
+      return {
+        ...rest,
+        id: id || crypto.randomUUID(),
+        createdAt: createdAt || created_at || new Date().toISOString(),
+        updatedAt: updatedAt || updated_at || new Date().toISOString()
+      };
+    });
+    for (const idea of ideasToInsert) {
+      await saveLocalIdea(idea);
+    }
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
         const imported = JSON.parse(event.target?.result as string);
         const importedArray = Array.isArray(imported) ? imported : [imported];
-        
-        if (!session?.user) return;
-
-        const ideasToInsert = importedArray.map((i: any) => {
-          // Remove potential conflicting IDs and map timestamps
-          const { id, createdAt, updatedAt, created_at, updated_at, ...rest } = i;
-          return {
-            ...rest,
-            user_id: session.user.id,
-            created_at: created_at || createdAt || new Date().toISOString(),
-            updated_at: updated_at || updatedAt || new Date().toISOString()
-          };
-        });
-
-        const { error } = await supabase
-          .from('ideas')
-          .insert(ideasToInsert);
-
-        if (!error) {
-          fetchIdeas();
-          alert('Ideas imported successfully!');
+        if (backend === 'supabase') {
+          if (!session?.user) return;
+          await importToSupabase(importedArray, session.user.id);
         } else {
-          console.error('Import error:', error);
-          alert('Failed to import ideas.');
+          await importToIndexedDB(importedArray);
         }
+        fetchIdeas();
+        alert('Ideas imported successfully!');
       } catch (err) {
-        alert('Invalid JSON file.');
+        console.error(err);
+        alert('Failed to import ideas. Invalid file format.');
       }
     };
     reader.readAsText(file);
@@ -285,23 +303,27 @@ const App = () => {
   };
 
   const fetchIdeas = async () => {
-    if (!session?.user) return;
-    const { data, error } = await supabase
-      .from('ideas')
-      .select('*');
-    
-    if (error) {
-      console.error('Error fetching ideas:', error);
-      return;
+    if (backend === 'supabase') {
+      if (!session?.user) return;
+      const { data, error } = await supabase.from('ideas').select('*');
+      if (error) {
+        console.error('Error fetching ideas:', error);
+        return;
+      }
+      const mapped = (data || []).map((i: any) => ({
+        ...i,
+        createdAt: i.created_at,
+        updatedAt: i.updated_at
+      }));
+      setIdeas(mapped as any);
+    } else {
+      try {
+        const localIdeas = await getLocalIdeas();
+        setIdeas(localIdeas);
+      } catch (err) {
+        console.error('Error fetching local ideas:', err);
+      }
     }
-
-    const mapped = (data || []).map((i: any) => ({
-      ...i,
-      createdAt: i.created_at,
-      updatedAt: i.updated_at
-    }));
-
-    setIdeas(mapped as any);
   };
 
   const fetchStats = useCallback(() => {
@@ -330,12 +352,16 @@ const App = () => {
   }, [ideas]);
 
   useEffect(() => {
-    if (session) {
-      fetchIdeas();
+    if (backend === 'supabase') {
+      if (session) {
+        fetchIdeas();
+      } else {
+        setIdeas([]);
+      }
     } else {
-      setIdeas([]);
+      fetchIdeas();
     }
-  }, [session]);
+  }, [session, backend]);
 
   useEffect(() => {
     fetchStats();
@@ -412,40 +438,59 @@ const App = () => {
     setIsEditing(true);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!session?.user) return;
-
-    const ideaData: any = {
-      ...formData,
-      user_id: session.user.id,
-      updated_at: new Date().toISOString()
-    };
-    
-    // Convert camelCase to snake_case for DB
-    if (ideaData.createdAt) ideaData.created_at = ideaData.createdAt;
-    if (ideaData.updatedAt) ideaData.updated_at = ideaData.updatedAt;
-    
-    delete ideaData.createdAt;
-    delete ideaData.updatedAt;
-    
-    if (!selectedIdea) {
-      delete ideaData.id;
-    }
-
+  const saveToSupabase = async (ideaData: any) => {
     const { error } = await supabase
       .from('ideas')
       .upsert(ideaData);
+    if (error) {
+      console.error('Error saving idea:', error);
+      alert('Failed to save idea');
+      return;
+    }
+    fetchIdeas();
+    setIsDirty(false);
+    setIsEditing(false);
+    setSelectedIdea(null);
+  };
 
-    if (!error) {
+  const saveToIndexedDB = async () => {
+    try {
+      const now = new Date().toISOString();
+      const ideaData: Idea = {
+        ...formData as Idea,
+        id: selectedIdea?.id || crypto.randomUUID(),
+        createdAt: selectedIdea?.createdAt || now,
+        updatedAt: now
+      };
+      await saveLocalIdea(ideaData);
       fetchIdeas();
       setIsDirty(false);
       setIsEditing(false);
       setSelectedIdea(null);
-    } else {
-      console.error('Error saving idea:', error);
-      alert('Failed to save idea');
+    } catch (err) {
+      console.error('Error saving local idea:', err);
+      alert('Failed to save local idea');
     }
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (backend === 'supabase') {
+      if (!session?.user) return;
+      const ideaData: any = {
+        ...formData,
+        user_id: session.user.id,
+        updated_at: new Date().toISOString()
+      };
+      if (ideaData.createdAt) ideaData.created_at = ideaData.createdAt;
+      if (ideaData.updatedAt) ideaData.updated_at = ideaData.updatedAt;
+      delete ideaData.createdAt;
+      delete ideaData.updatedAt;
+      if (!selectedIdea) delete ideaData.id;
+      await saveToSupabase(ideaData);
+      return;
+    }
+    await saveToIndexedDB();
   };
 
   const handleCancel = () => {
@@ -454,39 +499,82 @@ const App = () => {
     setIsEditing(false);
   };
 
-  const handleDelete = async () => {
-    if (!selectedIdea || !session?.user) return;
-    if (!window.confirm(`Delete "${selectedIdea.title}"? This cannot be undone.`)) return;
-    
+  const deleteFromSupabase = async (id: string, userId: string) => {
     const { error } = await supabase
       .from('ideas')
       .delete()
-      .eq('id', selectedIdea.id)
-      .eq('user_id', session.user.id);
+      .eq('id', id)
+      .eq('user_id', userId);
+    if (error) {
+      console.error('Error deleting idea:', error);
+      return;
+    }
+    fetchIdeas();
+    setIsDirty(false);
+    setIsEditing(false);
+    setSelectedIdea(null);
+  };
 
-    if (!error) {
+  const deleteFromIndexedDB = async (id: string) => {
+    try {
+      await deleteLocalIdea(id);
       fetchIdeas();
       setIsDirty(false);
       setIsEditing(false);
       setSelectedIdea(null);
+    } catch (err) {
+      console.error('Error deleting local idea:', err);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedIdea) return;
+    if (!window.confirm(`Delete "${selectedIdea.title}"? This cannot be undone.`)) return;
+    if (backend === 'supabase') {
+      if (!session?.user) return;
+      await deleteFromSupabase(selectedIdea.id, session.user.id);
+      return;
+    }
+    await deleteFromIndexedDB(selectedIdea.id);
+  };
+
+  const deleteAllFromSupabase = async (userId: string) => {
+    const { error } = await supabase
+      .from('ideas')
+      .delete()
+      .eq('user_id', userId);
+    if (error) {
+      console.error('Error deleting all ideas:', error);
+      return;
+    }
+    fetchIdeas();
+    setIsDirty(false);
+    setIsEditing(false);
+    setSelectedIdea(null);
+  };
+
+  const deleteAllFromIndexedDB = async () => {
+    try {
+      await clearLocalIdeas();
+      fetchIdeas();
+      setIsDirty(false);
+      setIsEditing(false);
+      setSelectedIdea(null);
+    } catch (err) {
+      console.error('Error clearing local ideas:', err);
     }
   };
 
   const handleDeleteAll = async () => {
-    if (!session?.user || ideas.length === 0) return;
-    if (!window.confirm(`Delete ALL ${ideas.length} ideas? This cannot be undone.`)) return;
-    
-    const { error } = await supabase
-      .from('ideas')
-      .delete()
-      .eq('user_id', session.user.id);
-      
-    if (!error) {
-      fetchIdeas();
-      setIsDirty(false);
-      setIsEditing(false);
-      setSelectedIdea(null);
+    if (ideas.length === 0) return;
+    const msg = `Delete ALL ${ideas.length} ideas? This cannot be undone.`;
+    if (!window.confirm(msg)) return;
+    if (backend === 'supabase') {
+      if (!session?.user) return;
+      await deleteAllFromSupabase(session.user.id);
+      return;
     }
+    await deleteAllFromIndexedDB();
   };
 
   const handleLogOut = async () => {
@@ -508,7 +596,7 @@ const App = () => {
     setIsDirty(dirty);
   }, [formData, isEditing]);
 
-  if (!session) {
+  if (backend === 'supabase' && !session) {
     return <Auth />;
   }
 
@@ -698,10 +786,16 @@ const App = () => {
                 <PieChartIcon size={24} />
                 <span>Charts</span>
               </button>
-              <button className="toggle-panel-btn" onClick={handleLogOut} title="Sign Out">
-                <LogOut size={24} />
-                <span>Logout</span>
+              <button className={`toggle-panel-btn ${isSettingsOpen ? 'active' : ''}`} onClick={() => setIsSettingsOpen(true)} title="Settings">
+                <Settings size={24} />
+                <span>Settings</span>
               </button>
+              {backend === 'supabase' && (
+                <button className="toggle-panel-btn" onClick={handleLogOut} title="Sign Out">
+                  <LogOut size={24} />
+                  <span>Logout</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1011,6 +1105,65 @@ const App = () => {
           </div>
         </div>
       </main>
+
+      {isSettingsOpen && (
+        <div className="modal-overlay" onClick={() => setIsSettingsOpen(false)}>
+          <div className="modal-container" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Database Settings</h2>
+              <button className="modal-close-btn" onClick={() => setIsSettingsOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="backend-options">
+              <button 
+                type="button"
+                className={`backend-option-card ${backend === 'indexedDB' ? 'active' : ''}`}
+                onClick={() => {
+                  setBackend('indexedDB');
+                  localStorage.setItem('idea-db-backend', 'indexedDB');
+                }}
+              >
+                <div className="backend-option-icon">
+                  <DbIcon size={22} />
+                </div>
+                <div className="backend-option-info">
+                  <div className="backend-option-title">Local Database (IndexedDB)</div>
+                  <div className="backend-option-desc">
+                    Store your ideas securely in your browser. No sign-in required, works offline.
+                  </div>
+                </div>
+              </button>
+
+              <button 
+                type="button"
+                className={`backend-option-card ${backend === 'supabase' ? 'active' : ''}`}
+                onClick={() => {
+                  setBackend('supabase');
+                  localStorage.setItem('idea-db-backend', 'supabase');
+                }}
+              >
+                <div className="backend-option-icon">
+                  <Server size={22} />
+                </div>
+                <div className="backend-option-info">
+                  <div className="backend-option-title">Cloud Sync (Supabase)</div>
+                  <div className="backend-option-desc">
+                    Synchronize your ideas across all devices. Requires a secure sign-in.
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-primary" onClick={() => setIsSettingsOpen(false)}>
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
