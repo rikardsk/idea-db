@@ -46,9 +46,36 @@ const PRIORITY_ORDER: Record<IdeaPriority, number> = {
   'Low': 0, 'Medium': 1, 'High': 2
 };
 
+const normalizeIdea = (i: any): Idea => {
+  const status = ['Draft', 'Researching', 'In Progress', 'Implemented', 'Archived'].includes(i?.status) 
+    ? i.status 
+    : 'Draft';
+  const priority = ['Low', 'Medium', 'High'].includes(i?.priority) ? i.priority : 'Medium';
+  const difficulty = ['Easy', 'Medium', 'Hard', 'Very Hard', 'Impossible'].includes(i?.difficulty) 
+    ? i.difficulty 
+    : 'Medium';
+  const category = i?.category || 'Other';
+  const tags = Array.isArray(i?.tags) 
+    ? i.tags 
+    : (typeof i?.tags === 'string' ? i.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []);
+
+  return {
+    id: i?.id || crypto.randomUUID(),
+    title: (i?.title || i?.name || 'Untitled Idea').trim(),
+    description: (i?.description || i?.desc || i?.details || '').trim(),
+    status,
+    priority,
+    category,
+    difficulty,
+    tags,
+    createdAt: i?.createdAt || i?.created_at || new Date().toISOString(),
+    updatedAt: i?.updatedAt || i?.updated_at || new Date().toISOString()
+  };
+};
+
 const App = () => {
   const [backend, setBackend] = useState<'supabase' | 'indexedDB'>(() => {
-    return (localStorage.getItem('idea-db-backend') as 'supabase' | 'indexedDB') || 'supabase';
+    return (localStorage.getItem('idea-db-backend') as 'supabase' | 'indexedDB') || 'indexedDB';
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [ideas, setIdeas] = useState<Idea[]>([]);
@@ -101,12 +128,12 @@ const App = () => {
   };
   const getStatusData = () => {
     const counts: Record<string, number> = {};
-    ideas.forEach(i => { counts[i.status] = (counts[i.status] || 0) + 1; });
+    ideas.forEach(i => { const st = i.status || 'Draft'; counts[st] = (counts[st] || 0) + 1; });
     return Object.keys(counts).map(k => ({ name: k, value: counts[k] }));
   };
   const getPriorityData = () => {
     const counts: Record<string, number> = {};
-    ideas.forEach(i => { counts[i.priority] = (counts[i.priority] || 0) + 1; });
+    ideas.forEach(i => { const pr = i.priority || 'Medium'; counts[pr] = (counts[pr] || 0) + 1; });
     return Object.keys(counts).map(k => ({ name: k, value: counts[k] }));
   };
 
@@ -234,12 +261,12 @@ const App = () => {
 
   const importToSupabase = async (importedArray: any[], userId: string) => {
     const ideasToInsert = importedArray.map((i: any) => {
-      const { id, createdAt, updatedAt, created_at, updated_at, ...rest } = i;
+      const { id, createdAt, updatedAt, ...rest } = normalizeIdea(i);
       return {
         ...rest,
         user_id: userId,
-        created_at: created_at || createdAt || new Date().toISOString(),
-        updated_at: updated_at || updatedAt || new Date().toISOString()
+        created_at: createdAt,
+        updated_at: updatedAt
       };
     });
     const { error } = await supabase.from('ideas').insert(ideasToInsert);
@@ -247,18 +274,21 @@ const App = () => {
   };
 
   const importToIndexedDB = async (importedArray: any[]) => {
-    const ideasToInsert = importedArray.map((i: any) => {
-      const { id, createdAt, updatedAt, created_at, updated_at, ...rest } = i;
-      return {
-        ...rest,
-        id: id || crypto.randomUUID(),
-        createdAt: createdAt || created_at || new Date().toISOString(),
-        updatedAt: updatedAt || updated_at || new Date().toISOString()
-      };
-    });
+    const ideasToInsert = importedArray.map(normalizeIdea);
     for (const idea of ideasToInsert) {
       await saveLocalIdea(idea);
     }
+  };
+
+  const extractImportedArray = (data: any): any[] => {
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === 'object') {
+      if (Array.isArray(data.ideas)) return data.ideas;
+      if (Array.isArray(data.data)) return data.data;
+      if (Array.isArray(data.items)) return data.items;
+      return [data];
+    }
+    return [];
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -267,16 +297,20 @@ const App = () => {
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
-        const imported = JSON.parse(event.target?.result as string);
-        const importedArray = Array.isArray(imported) ? imported : [imported];
+        const parsed = JSON.parse(event.target?.result as string);
+        const importedArray = extractImportedArray(parsed).filter(i => i && typeof i === 'object');
+        if (importedArray.length === 0) {
+          alert('No ideas found in the imported file.');
+          return;
+        }
         if (backend === 'supabase') {
           if (!session?.user) return;
           await importToSupabase(importedArray, session.user.id);
         } else {
           await importToIndexedDB(importedArray);
         }
-        fetchIdeas();
-        alert('Ideas imported successfully!');
+        await fetchIdeas();
+        alert(`Successfully imported ${importedArray.length} ideas!`);
       } catch (err) {
         console.error(err);
         alert('Failed to import ideas. Invalid file format.');
@@ -310,19 +344,19 @@ const App = () => {
         console.error('Error fetching ideas:', error);
         return;
       }
-      const mapped = (data || []).map((i: any) => ({
+      const mapped = (data || []).map((i: any) => normalizeIdea({
         ...i,
         createdAt: i.created_at,
         updatedAt: i.updated_at
       }));
-      setIdeas(mapped as any);
-    } else {
-      try {
-        const localIdeas = await getLocalIdeas();
-        setIdeas(localIdeas);
-      } catch (err) {
-        console.error('Error fetching local ideas:', err);
-      }
+      setIdeas(mapped);
+      return;
+    }
+    try {
+      const localIdeas = await getLocalIdeas();
+      setIdeas((localIdeas || []).map(normalizeIdea));
+    } catch (err) {
+      console.error('Error fetching local ideas:', err);
     }
   };
 
@@ -340,8 +374,14 @@ const App = () => {
     const priorityCounts: any = { Low: 0, Medium: 0, High: 0 };
     
     ideas.forEach(idea => {
-      statusCounts[idea.status] = (statusCounts[idea.status] || 0) + 1;
-      priorityCounts[idea.priority] = (priorityCounts[idea.priority] || 0) + 1;
+      const status = idea.status || 'Draft';
+      const priority = idea.priority || 'Medium';
+      if (statusCounts[status] !== undefined) {
+        statusCounts[status] = (statusCounts[status] || 0) + 1;
+      }
+      if (priorityCounts[priority] !== undefined) {
+        priorityCounts[priority] = (priorityCounts[priority] || 0) + 1;
+      }
     });
 
     setStats({
@@ -370,8 +410,10 @@ const App = () => {
   const filteredIdeas = useMemo(() => {
     return ideas
       .filter(idea => {
-        const matchesSearch = idea.title.toLowerCase().includes(search.toLowerCase()) || 
-                               idea.description.toLowerCase().includes(search.toLowerCase());
+        const title = idea.title || '';
+        const description = idea.description || '';
+        const matchesSearch = title.toLowerCase().includes(search.toLowerCase()) || 
+                               description.toLowerCase().includes(search.toLowerCase());
         const matchesStatus = filterStatus === 'All' || idea.status === filterStatus;
         const matchesCategory = filterCategory === 'All' || idea.category === filterCategory;
         const matchesDifficulty = filterDifficulty === 'All' || idea.difficulty === filterDifficulty;
@@ -379,14 +421,14 @@ const App = () => {
         return matchesSearch && matchesStatus && matchesCategory && matchesDifficulty && matchesPriority;
       })
       .sort((a, b) => {
-        if (sortBy === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        if (sortBy === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        if (sortBy === 'priority') return PRIORITY_ORDER[b.priority] - PRIORITY_ORDER[a.priority];
-        if (sortBy === 'difficulty') return DIFFICULTY_ORDER[b.difficulty] - DIFFICULTY_ORDER[a.difficulty];
-        if (sortBy === 'alpha-asc') return a.title.localeCompare(b.title);
-        if (sortBy === 'alpha-desc') return b.title.localeCompare(a.title);
+        if (sortBy === 'newest') return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        if (sortBy === 'oldest') return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+        if (sortBy === 'priority') return (PRIORITY_ORDER[b.priority] ?? 1) - (PRIORITY_ORDER[a.priority] ?? 1);
+        if (sortBy === 'difficulty') return (DIFFICULTY_ORDER[b.difficulty] ?? 1) - (DIFFICULTY_ORDER[a.difficulty] ?? 1);
+        if (sortBy === 'alpha-asc') return (a.title || '').localeCompare(b.title || '');
+        if (sortBy === 'alpha-desc') return (b.title || '').localeCompare(a.title || '');
         if (sortBy === 'category') return (a.category || 'Other').localeCompare(b.category || 'Other');
-        if (sortBy === 'status') return a.status.localeCompare(b.status);
+        if (sortBy === 'status') return (a.status || 'Draft').localeCompare(b.status || 'Draft');
         return 0;
       });
   }, [ideas, search, filterStatus, filterCategory, filterDifficulty, filterPriority, sortBy]);
@@ -589,13 +631,13 @@ const App = () => {
     try {
       const { data, error } = await supabase.from('ideas').select('*');
       if (error) throw error;
-      const mapped = (data || []).map((i: any) => ({
+      const mapped = (data || []).map((i: any) => normalizeIdea({
         ...i,
         createdAt: i.created_at,
         updatedAt: i.updated_at
       }));
       for (const idea of mapped) {
-        await saveLocalIdea(idea as Idea);
+        await saveLocalIdea(idea);
       }
       if (backend === 'indexedDB') await fetchIdeas();
       alert(`Successfully synced ${mapped.length} ideas from Supabase to IndexedDB.`);
@@ -612,7 +654,7 @@ const App = () => {
     }
     try {
       const localIdeas = await getLocalIdeas();
-      const ideasToInsert = localIdeas.map(idea => ({
+      const ideasToInsert = localIdeas.map(normalizeIdea).map(idea => ({
         ...idea,
         user_id: session.user.id,
         created_at: idea.createdAt,
@@ -643,8 +685,13 @@ const App = () => {
     setIsDirty(dirty);
   }, [formData, isEditing]);
 
+  const handleSkipAuth = () => {
+    setBackend('indexedDB');
+    localStorage.setItem('idea-db-backend', 'indexedDB');
+  };
+
   if (backend === 'supabase' && !session) {
-    return <Auth />;
+    return <Auth onSkip={handleSkipAuth} />;
   }
 
   return (
@@ -1060,8 +1107,8 @@ const App = () => {
                           onClick={() => handleSelectIdea(idea)}
                         >
                           <td>
-                            <div className="table-title">{idea.title}</div>
-                            <div className="table-desc">{idea.description}</div>
+                            <div className="table-title">{idea.title || 'Untitled Idea'}</div>
+                            <div className="table-desc">{idea.description || ''}</div>
                           </td>
                           <td>
                             <span className="category-badge" title="Category">
@@ -1071,10 +1118,10 @@ const App = () => {
                           <td>
                             <div className="idea-item-meta" title="Status" style={{ justifyContent: 'flex-start' }}>
                               <CategoryIcon size={14} />
-                              <span>{idea.status}</span>
+                              <span>{idea.status || 'Draft'}</span>
                             </div>
                           </td>
-                          <td><span className={`badge badge-${idea.priority.toLowerCase()}`} title="Priority">{idea.priority}</span></td>
+                          <td><span className={`badge badge-${(idea.priority || 'Medium').toLowerCase()}`} title="Priority">{idea.priority || 'Medium'}</span></td>
                           <td>
                             <span className={`difficulty-indicator diff-${difficulty.toLowerCase().replace(' ', '-')}`} title="Difficulty">
                               <Gauge size={12} /> {difficulty}
@@ -1101,15 +1148,15 @@ const App = () => {
                   onClick={() => handleSelectIdea(idea)}
                 >
                   <div className="idea-item-header">
-                    <span className={`badge badge-${idea.priority.toLowerCase()}`} title="Priority">{idea.priority}</span>
+                    <span className={`badge badge-${(idea.priority || 'Medium').toLowerCase()}`} title="Priority">{idea.priority || 'Medium'}</span>
                     <div className="idea-item-meta" title="Status">
                       <CategoryIcon size={14} />
-                      <span>{idea.status}</span>
+                      <span>{idea.status || 'Draft'}</span>
                     </div>
                   </div>
-                  <h3 className="idea-item-title">{idea.title}</h3>
+                  <h3 className="idea-item-title">{idea.title || 'Untitled Idea'}</h3>
                   <p className="idea-item-desc">
-                    {idea.description}
+                    {idea.description || ''}
                   </p>
                   <div className="idea-item-footer">
                     <span className={`difficulty-indicator diff-${difficulty.toLowerCase().replace(' ', '-')}`} title="Difficulty">

@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { supabase } from './supabase';
-import { LogIn, UserPlus, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
+import { LogIn, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 
-export const Auth: React.FC = () => {
+interface AuthProps {
+  onSkip?: () => void;
+}
+
+export const Auth: React.FC<AuthProps> = ({ onSkip }) => {
   const [loading, setLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -15,14 +18,8 @@ export const Auth: React.FC = () => {
     setError(null);
 
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        alert('Check your email for the confirmation link!');
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -37,8 +34,8 @@ export const Auth: React.FC = () => {
           <div className="auth-logo">
             <div className="logo-icon">🚀</div>
           </div>
-          <h1>{isSignUp ? 'Create Account' : 'Welcome Back'}</h1>
-          <p>{isSignUp ? 'Join the Idea Database' : 'Sign in to manage your ideas'}</p>
+          <h1>Welcome Back</h1>
+          <p>Sign in to manage your ideas</p>
         </div>
 
         <form onSubmit={handleAuth} className="auth-form">
@@ -80,10 +77,6 @@ export const Auth: React.FC = () => {
           <button type="submit" className="btn btn-primary auth-submit" disabled={loading}>
             {loading ? (
               <Loader2 className="animate-spin" size={20} />
-            ) : isSignUp ? (
-              <>
-                <UserPlus size={20} /> Sign Up
-              </>
             ) : (
               <>
                 <LogIn size={20} /> Sign In
@@ -92,17 +85,23 @@ export const Auth: React.FC = () => {
           </button>
         </form>
 
-        <div className="auth-footer">
-          <button
-            type="button"
-            className="btn-text"
-            onClick={() => setIsSignUp(!isSignUp)}
-          >
-            {isSignUp
-              ? 'Already have an account? Sign In'
-              : "Don't have an account? Sign Up"}
-          </button>
-        </div>
+        {onSkip && (
+          <div className="auth-footer" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '8px 0' }}>
+              <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }} />
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>or</span>
+              <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }} />
+            </div>
+            <button
+              type="button"
+              className="btn btn-outline"
+              style={{ width: '100%', justifyContent: 'center' }}
+              onClick={onSkip}
+            >
+              Skip for now (Use Local Database)
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
